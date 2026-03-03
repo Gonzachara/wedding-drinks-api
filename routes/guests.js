@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { emitUpdate } = require('../socket');
 const auth = require('../middleware/auth');
 const admin = require('../middleware/admin');
 
@@ -194,6 +195,17 @@ router.put('/:id', admin, async (req, res) => {
       'UPDATE guests SET name = ?, category_id = ?, points_limit = ?, status = ? WHERE id = ?',
       [name, category_id, points_limit, status, id]
     );
+    const [[guest]] = await Promise.all([
+      db.query('SELECT unique_code, status, points_consumed, points_limit FROM guests WHERE id = ?', [id])
+    ]);
+    if (guest) {
+      emitUpdate('guest_status_update', {
+        guest_code: guest.unique_code,
+        status: guest.status,
+        points_consumed: guest.points_consumed,
+        points_limit: guest.points_limit
+      });
+    }
     res.json({ message: 'Invitado actualizado con éxito.' });
   } catch (error) {
     res.status(500).json({ message: 'Error al actualizar invitado.' });
@@ -219,6 +231,17 @@ router.put('/reset/:id', admin, async (req, res) => {
     const { id } = req.params;
     try {
         await db.query('UPDATE guests SET points_consumed = 0, status = "active", last_drink_timestamp = NULL WHERE id = ?', [id]);
+        const [[guest]] = await Promise.all([
+          db.query('SELECT unique_code, status, points_consumed, points_limit FROM guests WHERE id = ?', [id])
+        ]);
+        if (guest) {
+          emitUpdate('guest_status_update', {
+            guest_code: guest.unique_code,
+            status: guest.status,
+            points_consumed: guest.points_consumed,
+            points_limit: guest.points_limit
+          });
+        }
         res.json({ message: 'Consumo del invitado reseteado con éxito.' });
     } catch (error) {
         console.error(error);

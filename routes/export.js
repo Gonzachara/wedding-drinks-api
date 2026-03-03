@@ -19,13 +19,13 @@ router.get('/csv/summary', async (req, res) => {
         d.name as drink_name,
         al.points_transacted as points,
         b.name as bar_name,
-        al.created_at as timestamp
+        al.timestamp as timestamp
       FROM audit_log al
       JOIN guests g ON al.guest_id = g.id
       LEFT JOIN guest_categories gc ON g.category_id = gc.id
       JOIN drinks_menu d ON al.drink_id = d.id
       JOIN bars b ON al.bar_id = b.id
-      ORDER BY al.created_at DESC
+      ORDER BY al.timestamp DESC
     `);
 
     const json2csvParser = new Parser();
@@ -67,9 +67,13 @@ router.get('/pdf/report', async (req, res) => {
     res.setHeader('Content-disposition', 'attachment; filename="' + filename + '"');
     res.setHeader('Content-type', 'application/pdf');
 
+    // Pipe antes de escribir
+    doc.pipe(res);
+
     doc.fontSize(20).text('Reporte Final del Evento', { align: 'center' });
     doc.moveDown();
-    doc.fontSize(14).text(`Fecha: ${new Date().toLocaleString()}`);
+    const nowBA = new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' });
+    doc.fontSize(14).text(`Fecha (Buenos Aires UTC-3): ${nowBA}`);
     doc.moveDown();
 
     doc.fontSize(16).text('Estadísticas Generales');
@@ -84,7 +88,6 @@ router.get('/pdf/report', async (req, res) => {
     });
 
     doc.end();
-    doc.pipe(res);
 
   } catch (error) {
     console.error(error);
