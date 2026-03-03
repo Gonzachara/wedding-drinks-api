@@ -14,6 +14,7 @@ app.use(express.json());
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/guests', require('./routes/guests'));
 app.use('/api/bartender', require('./routes/bartender'));
+app.use('/api/menu', require('./routes/menu'));
 
 // Ruta de bienvenida
 app.get('/', (req, res) => {
