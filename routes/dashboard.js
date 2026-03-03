@@ -4,12 +4,44 @@ const db = require('../db');
 const auth = require('../middleware/auth');
 const admin = require('../middleware/admin');
 
+async function ensureCoreTables() {
+  // drinks_menu table
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS drinks_menu (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      description TEXT NULL,
+      category VARCHAR(100) NULL,
+      points_value INT NOT NULL DEFAULT 10,
+      is_alcoholic BOOLEAN DEFAULT TRUE,
+      is_available BOOLEAN DEFAULT TRUE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  // audit_log table
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      guest_id INT,
+      user_id INT,
+      drink_id INT,
+      bar_id INT,
+      points_transacted INT NOT NULL,
+      guest_points_before INT NOT NULL,
+      guest_points_after INT NOT NULL,
+      device_info VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+}
+
 // Proteger todas las rutas del dashboard
 router.use(auth, admin);
 
 // GET /api/dashboard/stats
 router.get('/stats', async (req, res) => {
   try {
+    await ensureCoreTables();
     // Métricas principales en paralelo
     const [generalStats] = await db.query(`
       SELECT 

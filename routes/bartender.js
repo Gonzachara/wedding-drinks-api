@@ -84,15 +84,12 @@ router.get('/guest/:code', async (req, res) => {
 router.post('/drink', async (req, res) => {
     const { guest_code, drink_id, device_info } = req.body;
     const user_id = req.user.id;
-    const bar_id = req.user.bar_id; // Assuming bartender is associated with a bar
+    const bar_id = req.user.bar_id || null; // bar opcional
 
     if (!guest_code || !drink_id) {
         return res.status(400).json({ message: 'Faltan datos (código de invitado o bebida).' });
     }
-
-    if (!bar_id) {
-        return res.status(400).json({ message: 'Usuario no asociado a ninguna barra.' });
-    }
+    // bar_id puede ser null en algunos usuarios; permitimos registrar igualmente
 
     try {
         // Fetch guest and drink details in parallel
