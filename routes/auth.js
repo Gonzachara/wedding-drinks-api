@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const db = require('../db');
+const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
 
 // Ruta de registro (protegida, solo para admins en el futuro)
 router.post('/register', async (req, res) => {
@@ -58,7 +60,7 @@ router.post('/login', async (req, res) => {
       bar_id: user.bar_id
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
 
     res.json({ token });
   } catch (error) {
