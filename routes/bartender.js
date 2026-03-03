@@ -62,6 +62,9 @@ router.post('/drink/:code', async (req, res) => {
 
         await db.query('UPDATE guests SET drinks_consumed = ?, status = ? WHERE unique_code = ?', [newDrinksConsumed, newStatus, code]);
 
+        // LOGGING ACTIVITY
+        await db.query('INSERT INTO activity_log (guest_id, action) VALUES (?, ?)', [guest.id, 'DRINK_REGISTERED']);
+
         res.json({ message: 'Bebida registrada con éxito.', drinks_remaining: guest.max_drinks - newDrinksConsumed });
 
     } catch (error) {

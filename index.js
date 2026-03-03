@@ -1,13 +1,13 @@
+require('dotenv').config();
 const express = require('express');
 const db = require('./db');
+const cors = require('cors');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 // Habilitar CORS para el dominio de producción
-const cors = require('cors');
 app.use(cors());
-
 app.use(express.json());
 
 // Rutas
