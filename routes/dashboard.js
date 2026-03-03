@@ -67,19 +67,19 @@ router.get('/stats', async (req, res) => {
     `);
 
     const [consumptionByHour] = await db.query(`
-      SELECT HOUR(created_at) as hour, COUNT(id) as drinks_served
+      SELECT HOUR(timestamp) as hour, COUNT(id) as drinks_served
       FROM audit_log
-      GROUP BY HOUR(created_at)
+      GROUP BY HOUR(timestamp)
       ORDER BY hour
     `);
 
     const [consumptionTimeline] = await db.query(`
       SELECT 
-        DATE_FORMAT(created_at, '%Y-%m-%d %H:%i') as minute,
+        DATE_FORMAT(timestamp, '%Y-%m-%d %H:%i') as minute,
         COUNT(id) as drinks_served,
         SUM(points_transacted) as points_consumed
       FROM audit_log
-      WHERE created_at >= NOW() - INTERVAL 1 HOUR
+      WHERE timestamp >= NOW() - INTERVAL 1 HOUR
       GROUP BY minute
       ORDER BY minute
     `);

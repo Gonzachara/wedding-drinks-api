@@ -68,11 +68,11 @@ router.get('/admin/activity', admin, async (req, res) => {
         g.name AS guest_name,
         d.name AS action,
         a.points_transacted,
-        a.created_at AS timestamp
+        a.timestamp AS timestamp
       FROM audit_log a
       LEFT JOIN guests g ON a.guest_id = g.id
       LEFT JOIN drinks_menu d ON a.drink_id = d.id
-      ORDER BY a.created_at DESC
+      ORDER BY a.timestamp DESC
       LIMIT 50
     `);
     res.json(rows);

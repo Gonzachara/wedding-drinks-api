@@ -142,7 +142,7 @@ router.post('/drink', async (req, res) => {
         const suspicious_interval_seconds = await getSetting('suspicious_interval_seconds', 10);
 
         const [lastLog] = await db.query(
-            'SELECT created_at FROM audit_log WHERE guest_id = ? ORDER BY created_at DESC LIMIT 1',
+            'SELECT timestamp FROM audit_log WHERE guest_id = ? ORDER BY timestamp DESC LIMIT 1',
             [guest.id]
         );
 
@@ -190,6 +190,18 @@ router.post('/drink', async (req, res) => {
         await connection.beginTransaction();
 
         try {
+            // Determinar bar efectivo (bar_id NOT NULL en audit_log)
+            let effectiveBarId = bar_id;
+            if (!effectiveBarId) {
+                const [bars] = await connection.query('SELECT id FROM bars ORDER BY id ASC LIMIT 1');
+                if (bars.length > 0) {
+                    effectiveBarId = bars[0].id;
+                } else {
+                    // Crear una barra por defecto si no existe ninguna
+                    const [result] = await connection.query('INSERT INTO bars (name, location) VALUES (?, ?)', ['BAR PRINCIPAL', null]);
+                    effectiveBarId = result.insertId;
+                }
+            }
             // 1. Update guest status and points
             await connection.query(
                 'UPDATE guests SET points_consumed = ?, status = ?, last_drink_timestamp = NOW() WHERE id = ?',
@@ -199,7 +211,7 @@ router.post('/drink', async (req, res) => {
             // 2. Log the audit trail
             await connection.query(
                 'INSERT INTO audit_log (guest_id, user_id, drink_id, bar_id, points_transacted, guest_points_before, guest_points_after, device_info, suspicious_activity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                [guest.id, user_id, drink_id, bar_id, points_value, guest_points_before, new_points_consumed, device_info || null, is_suspicious]
+                [guest.id, user_id, drink_id, effectiveBarId, points_value, guest_points_before, new_points_consumed, device_info || null, is_suspicious]
             );
 
             await connection.commit();
