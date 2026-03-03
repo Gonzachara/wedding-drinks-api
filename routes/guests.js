@@ -55,6 +55,35 @@ router.get('/public/search/:name', async (req, res) => {
   }
 });
 
+// PUBLIC ROUTE: Guest drink history by unique code
+router.get('/public/history/:code', async (req, res) => {
+  const { code } = req.params;
+  try {
+    const [[guestRows]] = await Promise.all([
+      db.query('SELECT id FROM guests WHERE unique_code = ?', [code])
+    ]);
+    if (guestRows.length === 0) {
+      return res.json([]);
+    }
+    const guestId = guestRows[0].id;
+    const [history] = await db.query(`
+      SELECT 
+        a.id,
+        d.name as drink_name,
+        a.points_transacted as points,
+        a.timestamp
+      FROM audit_log a
+      LEFT JOIN drinks_menu d ON a.drink_id = d.id
+      WHERE a.guest_id = ?
+      ORDER BY a.timestamp DESC
+      LIMIT 20
+    `, [guestId]);
+    res.json(history);
+  } catch (error) {
+    res.json([]);
+  }
+});
+
 // Middleware to protect all subsequent routes
 router.use(auth);
 

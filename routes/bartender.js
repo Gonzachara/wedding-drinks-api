@@ -220,6 +220,7 @@ router.post('/drink', async (req, res) => {
             // Emitir evento de actualización en tiempo real
             emitUpdate('new_transaction', {
               guest_name: guest.name,
+              guest_code: guest.unique_code,
               drink_name: drink.name,
               points: points_value,
               bar_id: bar_id,
