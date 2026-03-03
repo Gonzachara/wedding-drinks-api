@@ -1,6 +1,4 @@
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
-const jwt = require('jsonwebtoken');
 const { getSecret } = require('../utils/jwtSecret');
 
 module.exports = function(req, res, next) {
