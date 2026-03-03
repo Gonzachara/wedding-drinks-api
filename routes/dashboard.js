@@ -118,8 +118,19 @@ router.get('/stats', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error al obtener estadísticas del dashboard:', error);
-    res.status(500).json({ message: 'Error en el servidor.' });
+    res.json({
+      total_drinks_served: 0,
+      total_points_consumed: 0,
+      total_guests: 0,
+      blocked_guests: 0,
+      most_requested_drink: 'N/A',
+      average_points_per_guest: '0.00',
+      consumption_by_hour: [],
+      consumption_by_bar: [],
+      consumption_timeline: [],
+      consumption_by_category: [],
+      degraded: true
+    });
   }
 });
 

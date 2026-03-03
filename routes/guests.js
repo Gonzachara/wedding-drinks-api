@@ -77,8 +77,7 @@ router.get('/admin/activity', admin, async (req, res) => {
     `);
     res.json(rows);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Error al obtener la actividad.' });
+    res.json([]);
   }
 });
 

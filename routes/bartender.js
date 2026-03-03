@@ -4,7 +4,6 @@ const db = require('../db');
 const auth = require('../middleware/auth');
 const { emitUpdate } = require('../socket');
 
-// Función para asegurar que la tabla de auditoría exista y tenga la estructura correcta
 async function ensureAuditLogTable() {
   await db.query(`
     CREATE TABLE IF NOT EXISTS audit_log (
@@ -25,7 +24,6 @@ async function ensureAuditLogTable() {
       FOREIGN KEY (bar_id) REFERENCES bars(id) ON DELETE SET NULL -- Asumiendo una tabla 'bars'
     )
   `);
-  // Añadir columna si no existe (para migraciones suaves)
   try {
     await db.query('ALTER TABLE audit_log ADD COLUMN suspicious_activity BOOLEAN DEFAULT FALSE');
   } catch (e) {
@@ -33,8 +31,38 @@ async function ensureAuditLogTable() {
   }
 }
 
-// Llamar a la función al iniciar para asegurar que la tabla está lista
 ensureAuditLogTable();
+
+async function ensureGuestsTable() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS guests (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      unique_code VARCHAR(10) NOT NULL UNIQUE,
+      category_id INT NULL,
+      points_consumed INT DEFAULT 0,
+      points_limit INT DEFAULT 100,
+      status ENUM('active', 'blocked', 'cooldown') DEFAULT 'active',
+      last_drink_timestamp TIMESTAMP NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+}
+
+async function ensureDrinksMenuTable() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS drinks_menu (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      description TEXT NULL,
+      category VARCHAR(100),
+      points_value INT NOT NULL DEFAULT 10,
+      is_alcoholic BOOLEAN DEFAULT TRUE,
+      is_available BOOLEAN DEFAULT TRUE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+}
 
 // Helper function to get a global setting value
 const getSetting = async (key, defaultValue) => {
@@ -92,6 +120,7 @@ router.post('/drink', async (req, res) => {
     // bar_id puede ser null en algunos usuarios; permitimos registrar igualmente
 
     try {
+        await Promise.all([ensureGuestsTable(), ensureDrinksMenuTable(), ensureAuditLogTable()]);
         // Fetch guest and drink details in parallel
         const [[guestRows], [drinkRows]] = await Promise.all([
             db.query('SELECT * FROM guests WHERE unique_code = ?', [guest_code]),
