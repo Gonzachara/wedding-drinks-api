@@ -16,8 +16,12 @@
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
+    "json2csv": "^6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.18.2",
+    "pdfkit": "^0.17.2",
+    "socket.io": "^4.8.3",
     "uuid": "^8.3.2"
   },
   "devDependencies": {

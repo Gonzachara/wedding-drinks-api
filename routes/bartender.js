@@ -2,6 +2,39 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const auth = require('../middleware/auth');
+const { emitUpdate } = require('../socket');
+
+// Función para asegurar que la tabla de auditoría exista y tenga la estructura correcta
+async function ensureAuditLogTable() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      guest_id INT,
+      user_id INT,
+      drink_id INT,
+      bar_id INT,
+      points_transacted INT NOT NULL,
+      guest_points_before INT NOT NULL,
+      guest_points_after INT NOT NULL,
+      device_info VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      suspicious_activity BOOLEAN DEFAULT FALSE,
+      FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE SET NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL, -- Asumiendo una tabla 'users'
+      FOREIGN KEY (drink_id) REFERENCES drinks_menu(id) ON DELETE SET NULL,
+      FOREIGN KEY (bar_id) REFERENCES bars(id) ON DELETE SET NULL -- Asumiendo una tabla 'bars'
+    )
+  `);
+  // Añadir columna si no existe (para migraciones suaves)
+  try {
+    await db.query('ALTER TABLE audit_log ADD COLUMN suspicious_activity BOOLEAN DEFAULT FALSE');
+  } catch (e) {
+    if (e.code !== 'ER_DUP_FIELDNAME') throw e; // Ignorar si la columna ya existe
+  }
+}
+
+// Llamar a la función al iniciar para asegurar que la tabla está lista
+ensureAuditLogTable();
 
 // Helper function to get a global setting value
 const getSetting = async (key, defaultValue) => {
@@ -77,6 +110,24 @@ router.post('/drink', async (req, res) => {
 
         const guest = guestRows[0];
         const drink = drinkRows[0];
+        const points_value = drink.points_value || 0;
+
+        let is_suspicious = false;
+        const suspicious_interval_seconds = await getSetting('suspicious_interval_seconds', 10);
+
+        const [lastLog] = await db.query(
+            'SELECT created_at FROM audit_log WHERE guest_id = ? ORDER BY created_at DESC LIMIT 1',
+            [guest.id]
+        );
+
+        if (lastLog.length > 0) {
+            const now = new Date();
+            const lastLogTime = new Date(lastLog[0].created_at);
+            const secondsSinceLast = (now.getTime() - lastLogTime.getTime()) / 1000;
+            if (secondsSinceLast < suspicious_interval_seconds) {
+                is_suspicious = true;
+            }
+        }
 
         // Check guest status
         if (guest.status === 'blocked') {
@@ -101,7 +152,7 @@ router.post('/drink', async (req, res) => {
         }
 
         const guest_points_before = guest.points_consumed;
-        const new_points_consumed = guest_points_before + drink.points_value;
+        const new_points_consumed = guest_points_before + points_value;
         let new_status = 'active';
 
         if (new_points_consumed >= guest.points_limit) {
@@ -121,12 +172,21 @@ router.post('/drink', async (req, res) => {
 
             // 2. Log the audit trail
             await connection.query(
-                'INSERT INTO audit_log (guest_id, user_id, drink_id, bar_id, points_transacted, guest_points_before, guest_points_after, device_info) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                [guest.id, user_id, drink_id, bar_id, drink.points_value, guest_points_before, new_points_consumed, device_info || null]
+                'INSERT INTO audit_log (guest_id, user_id, drink_id, bar_id, points_transacted, guest_points_before, guest_points_after, device_info, suspicious_activity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [guest.id, user_id, drink_id, bar_id, points_value, guest_points_before, new_points_consumed, device_info || null, is_suspicious]
             );
 
             await connection.commit();
             connection.release();
+
+            // Emitir evento de actualización en tiempo real
+            emitUpdate('new_transaction', {
+              guest_name: guest.name,
+              drink_name: drink.name,
+              points: points_value,
+              bar_id: bar_id,
+              timestamp: new Date()
+            });
 
             res.json({ 
                 message: 'Bebida registrada con éxito.', 
