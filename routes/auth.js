@@ -2,9 +2,8 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
 const db = require('../db');
-const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+const { getSecret } = require('../utils/jwtSecret');
 
 // Ruta de registro (protegida, solo para admins en el futuro)
 router.post('/register', async (req, res) => {
@@ -60,11 +59,13 @@ router.post('/login', async (req, res) => {
       bar_id: user.bar_id
     };
 
-    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+    const secret = getSecret();
+    const token = jwt.sign(payload, secret, { expiresIn: '8h' });
 
     res.json({ token });
   } catch (error) {
-    console.error(error);
+    const msg = error && error.message ? error.message : 'Error en el servidor.';
+    console.error('Error en /auth/login:', msg);
     res.status(500).json({ message: 'Error en el servidor.' });
   }
 });
