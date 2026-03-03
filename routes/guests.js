@@ -29,6 +29,29 @@ router.get('/public/search/:name', async (req, res) => {
 // Middleware to protect all subsequent routes
 router.use(auth);
 
+// ADMIN: Recent activity (audit log)
+router.get('/admin/activity', admin, async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT 
+        a.id,
+        g.name AS guest_name,
+        d.name AS action,
+        a.points_transacted,
+        a.created_at AS timestamp
+      FROM audit_log a
+      LEFT JOIN guests g ON a.guest_id = g.id
+      LEFT JOIN drinks_menu d ON a.drink_id = d.id
+      ORDER BY a.created_at DESC
+      LIMIT 50
+    `);
+    res.json(rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error al obtener la actividad.' });
+  }
+});
+
 // GET all guests (protected)
 router.get('/', admin, async (req, res) => {
   try {
