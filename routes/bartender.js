@@ -233,14 +233,17 @@ router.post('/drink', async (req, res) => {
             });
 
         } catch (txError) {
-            await connection.rollback();
-            connection.release();
-            throw txError; // Propagate to the outer catch block
+            try { await connection.rollback(); } catch (_) {}
+            try { connection.release(); } catch (_) {}
+            if (txError && txError.code) {
+                return res.status(500).json({ message: 'No se pudo registrar la bebida', code: txError.code });
+            }
+            return res.status(500).json({ message: 'No se pudo registrar la bebida' });
         }
 
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error en el servidor al registrar la bebida.' });
+        console.error('Error general en /bartender/drink:', error);
+        res.status(500).json({ message: 'Error en el servidor al registrar la bebida.', code: error && error.code ? error.code : undefined });
     }
 });
 
