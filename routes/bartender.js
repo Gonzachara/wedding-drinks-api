@@ -114,28 +114,48 @@ router.post('/drink', async (req, res) => {
     const user_id = req.user.id;
     const bar_id = req.user.bar_id || null; // bar opcional
 
-    if (!guest_code || !drink_id) {
-        return res.status(400).json({ message: 'Faltan datos (código de invitado o bebida).' });
+    if (!guest_code) {
+        return res.status(400).json({ message: 'Falta el código de invitado.' });
     }
     // bar_id puede ser null en algunos usuarios; permitimos registrar igualmente
 
     try {
         await Promise.all([ensureGuestsTable(), ensureDrinksMenuTable(), ensureAuditLogTable()]);
-        // Fetch guest and drink details in parallel
-        const [[guestRows], [drinkRows]] = await Promise.all([
-            db.query('SELECT * FROM guests WHERE unique_code = ?', [guest_code]),
-            db.query('SELECT * FROM drinks_menu WHERE id = ?', [drink_id])
-        ]);
+
+        // Obtener invitado
+        const [guestRows] = await db.query('SELECT * FROM guests WHERE unique_code = ?', [guest_code]);
 
         if (guestRows.length === 0) {
             return res.status(404).json({ message: 'Invitado no encontrado.' });
         }
-        if (drinkRows.length === 0) {
-            return res.status(404).json({ message: 'Bebida no encontrada en el menú.' });
-        }
 
         const guest = guestRows[0];
-        const drink = drinkRows[0];
+
+        // Si el invitado ya está bloqueado o en cooldown manual, no permitir consumo
+        if (guest.status === 'blocked') {
+            return res.status(403).json({ message: 'Límite de bebidas alcanzado.' });
+        }
+        if (guest.status === 'cooldown') {
+            return res.status(429).json({ message: 'Invitado en cooldown. No puede consumir por ahora.' });
+        }
+
+        // Obtener bebida: si viene drink_id se respeta, si no se usa la primera disponible
+        let drink;
+        if (drink_id) {
+            const [drinkRows] = await db.query('SELECT * FROM drinks_menu WHERE id = ?', [drink_id]);
+            if (drinkRows.length === 0) {
+                return res.status(404).json({ message: 'Bebida no encontrada en el menú.' });
+            }
+            drink = drinkRows[0];
+        } else {
+            const [defaultDrinkRows] = await db.query(
+                'SELECT * FROM drinks_menu WHERE is_available = TRUE ORDER BY id ASC LIMIT 1'
+            );
+            if (defaultDrinkRows.length === 0) {
+                return res.status(400).json({ message: 'No hay bebidas configuradas en el sistema.' });
+            }
+            drink = defaultDrinkRows[0];
+        }
         // Cada registro de bebida cuenta como 1 unidad de consumo (independientemente de points_value en drinks_menu)
         const points_value = 1;
 

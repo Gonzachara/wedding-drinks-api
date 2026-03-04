@@ -48,9 +48,9 @@ router.post('/', async (req, res) => {
         continue;
       }
 
-      // Check if guest no ha superado el límite de consumo y no está bloqueado
-      if (guest.status === 'blocked' || (guest.points_consumed + points_value > guest.points_limit)) {
-        results.conflicts.push({ id: tx.id, message: 'Límite de bebidas excedido o invitado bloqueado.' });
+      // Check if guest no ha superado el límite de consumo y no está bloqueado ni en cooldown
+      if (guest.status === 'blocked' || guest.status === 'cooldown' || (guest.points_consumed + points_value > guest.points_limit)) {
+        results.conflicts.push({ id: tx.id, message: 'Límite de bebidas excedido o invitado bloqueado/cooldown.' });
         continue;
       }
 

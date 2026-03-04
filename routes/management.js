@@ -179,6 +179,14 @@ router.put('/settings/:key', async (req, res) => {
       const { emitUpdate } = require('../socket');
       emitUpdate('emergency_mode_update', { mode: setting_value });
     }
+
+    // Si se cambia el límite global por defecto, actualizar a todos los invitados
+    if (key === 'default_guest_points') {
+      const parsed = parseInt(setting_value, 10);
+      if (!Number.isNaN(parsed) && parsed >= 0) {
+        await db.query('UPDATE guests SET points_limit = ?', [parsed]);
+      }
+    }
     
     res.json({ message: 'Configuración actualizada con éxito.' });
   } catch (error) {
