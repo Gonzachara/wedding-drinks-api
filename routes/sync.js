@@ -38,7 +38,8 @@ router.post('/', async (req, res) => {
 
       const guest = guestRows[0];
       const drink = drinkRows[0];
-      const points_value = drink.points_value || 0;
+      // Cada registro de bebida sincronizada cuenta como 1 unidad de consumo
+      const points_value = 1;
 
       // Conflict detection: if the transaction was already processed (by ID)
       const [existingTx] = await db.query('SELECT id FROM audit_log WHERE device_info = ?', [`offline_${tx.id}`]);
@@ -47,9 +48,9 @@ router.post('/', async (req, res) => {
         continue;
       }
 
-      // Check if guest has enough points and is not blocked
+      // Check if guest no ha superado el límite de consumo y no está bloqueado
       if (guest.status === 'blocked' || (guest.points_consumed + points_value > guest.points_limit)) {
-        results.conflicts.push({ id: tx.id, message: 'Límite de puntos excedido o invitado bloqueado.' });
+        results.conflicts.push({ id: tx.id, message: 'Límite de bebidas excedido o invitado bloqueado.' });
         continue;
       }
 

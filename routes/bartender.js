@@ -136,7 +136,8 @@ router.post('/drink', async (req, res) => {
 
         const guest = guestRows[0];
         const drink = drinkRows[0];
-        const points_value = drink.points_value || 0;
+        // Cada registro de bebida cuenta como 1 unidad de consumo (independientemente de points_value en drinks_menu)
+        const points_value = 1;
 
         let is_suspicious = false;
         const suspicious_interval_seconds = await getSetting('suspicious_interval_seconds', 10);
@@ -157,7 +158,7 @@ router.post('/drink', async (req, res) => {
 
         // Check guest status
         if (guest.status === 'blocked') {
-            return res.status(403).json({ message: 'Límite de puntos alcanzado.' });
+            return res.status(403).json({ message: 'Límite de bebidas alcanzado.' });
         }
 
         // Check cooldown

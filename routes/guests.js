@@ -216,11 +216,11 @@ router.put('/:id', admin, async (req, res) => {
 router.put('/admin/global-limit', admin, async (req, res) => {
   const { points_limit } = req.body;
   if (!points_limit || points_limit < 0) {
-    return res.status(400).json({ message: 'Límite de puntos no válido.' });
+    return res.status(400).json({ message: 'Límite de bebidas no válido.' });
   }
   try {
     await db.query('UPDATE guests SET points_limit = ?', [points_limit]);
-    res.json({ message: `Límite de puntos global actualizado a ${points_limit}.` });
+    res.json({ message: `Límite de bebidas por invitado actualizado a ${points_limit}.` });
   } catch (error) {
     res.status(500).json({ message: 'Error al actualizar el límite global.' });
   }

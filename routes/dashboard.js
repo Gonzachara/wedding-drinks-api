@@ -45,8 +45,7 @@ router.get('/stats', async (req, res) => {
     // Métricas principales en paralelo
     const [generalStats] = await db.query(`
       SELECT 
-        COUNT(id) as total_drinks_served,
-        IFNULL(SUM(points_transacted), 0) as total_points_consumed
+        COUNT(id) as total_drinks_served
       FROM audit_log
     `);
 
@@ -76,8 +75,7 @@ router.get('/stats', async (req, res) => {
     const [consumptionTimeline] = await db.query(`
       SELECT 
         DATE_FORMAT(timestamp, '%Y-%m-%d %H:%i') as minute,
-        COUNT(id) as drinks_served,
-        SUM(points_transacted) as points_consumed
+        COUNT(id) as drinks_served
       FROM audit_log
       WHERE timestamp >= NOW() - INTERVAL 1 HOUR
       GROUP BY minute
@@ -85,7 +83,7 @@ router.get('/stats', async (req, res) => {
     `);
 
     const [consumptionByCategory] = await db.query(`
-      SELECT gc.name as category_name, COUNT(al.id) as total_drinks, SUM(al.points_transacted) as total_points
+      SELECT gc.name as category_name, COUNT(al.id) as total_drinks
       FROM audit_log al
       JOIN guests g ON al.guest_id = g.id
       JOIN guest_categories gc ON g.category_id = gc.id
@@ -93,24 +91,23 @@ router.get('/stats', async (req, res) => {
     `);
 
     const [consumptionByBar] = await db.query(`
-      SELECT b.name as bar_name, COUNT(a.id) as total_drinks, SUM(a.points_transacted) as total_points
+      SELECT b.name as bar_name, COUNT(a.id) as total_drinks
       FROM audit_log a
       JOIN bars b ON a.bar_id = b.id
       GROUP BY b.name
       ORDER BY total_drinks DESC
     `);
 
-    const average_points_per_guest = guestStats[0].total_guests > 0 
-      ? (generalStats[0].total_points_consumed || 0) / guestStats[0].total_guests
+    const average_drinks_per_guest = guestStats[0].total_guests > 0 
+      ? (generalStats[0].total_drinks_served || 0) / guestStats[0].total_guests
       : 0;
 
     res.json({
       total_drinks_served: generalStats[0].total_drinks_served || 0,
-      total_points_consumed: generalStats[0].total_points_consumed || 0,
       total_guests: guestStats[0].total_guests || 0,
       blocked_guests: guestStats[0].blocked_guests || 0,
       most_requested_drink: topDrink.length > 0 ? topDrink[0] : 'N/A',
-      average_points_per_guest: average_points_per_guest.toFixed(2),
+      average_drinks_per_guest: average_drinks_per_guest.toFixed(2),
       consumption_by_hour: consumptionByHour || [],
       consumption_by_bar: consumptionByBar || [],
       consumption_timeline: consumptionTimeline || [],

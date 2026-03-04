@@ -30,8 +30,7 @@ router.get('/', async (req, res) => {
     const [rows] = await db.query('SELECT id, name, description, category, points_value, is_alcoholic, is_available FROM drinks_menu ORDER BY name ASC');
     res.json(rows);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Error al obtener el menú.' });
+    res.json([]);
   }
 });
 

@@ -17,7 +17,7 @@ router.get('/csv/summary', async (req, res) => {
         g.name as guest_name,
         gc.name as category,
         d.name as drink_name,
-        al.points_transacted as points,
+        al.points_transacted as drinks,
         b.name as bar_name,
         al.timestamp as timestamp
       FROM audit_log al
@@ -45,8 +45,7 @@ router.get('/pdf/report', async (req, res) => {
   try {
     const [generalStats] = await db.query(`
       SELECT 
-        COUNT(id) as total_drinks,
-        SUM(points_transacted) as total_points
+        COUNT(id) as total_drinks
       FROM audit_log
     `);
 
@@ -78,13 +77,12 @@ router.get('/pdf/report', async (req, res) => {
 
     doc.fontSize(16).text('Estadísticas Generales');
     doc.fontSize(12).text(`Total Bebidas Servidas: ${generalStats[0].total_drinks || 0}`);
-    doc.text(`Total Puntos Consumidos: ${generalStats[0].total_points || 0}`);
     doc.text(`Total Invitados: ${guestStats[0].total_guests || 0}`);
     doc.moveDown();
 
     doc.fontSize(16).text('Consumo por Barra');
     barStats.forEach(bar => {
-      doc.fontSize(12).text(`${bar.name}: ${bar.drinks || 0} bebidas, ${bar.points || 0} puntos`);
+      doc.fontSize(12).text(`${bar.name}: ${bar.drinks || 0} bebidas`);
     });
 
     doc.end();
